@@ -387,7 +387,8 @@ pub const UI_COMMANDS: &[(&str, &str, &str, &str)] = &[
         "",
         "{collapsed?: bool} collapse the dock's Properties | Layers | Libraries group to icons (true), expand it (false) or toggle (omitted), as the double arrow at the top of the dock does; returns the new state",
     ),
-    ("window.brightness", "UI Brightness", "", "{brightness: dark|mediumDark|mediumLight|light}"),
+    ("window.brightness", "UI Brightness", "", "{brightness: dark|mediumDark|mediumLight|light|shadesOfPurple}"),
+    ("window.theme.shadesOfPurple", "Shades of Purple Theme", "", "{} switch to Shades of Purple theme"),
     ("window.workspace", "Workspace", "", "{name} switch workspace (Essentials, Essentials Classic, Painting, …)"),
     ("window.workspace.reset", "Reset Essentials", "", "{} reset the current workspace"),
     ("window.workspace.new", "New Workspace…", "", "{name?} save the current layout"),
@@ -1484,15 +1485,27 @@ pub fn run_ui_command(app: &mut VectorcraftApp, id: &str, p: &Value) -> Option<R
                 (None, _) => Err(format!("unknown panel `{raw}`")),
             }
         }
-        "window.brightness" => match s("brightness").as_deref().and_then(Brightness::parse) {
+        "window.brightness" | "window.theme" => match s("brightness").or_else(|| s("theme")).as_deref().and_then(Brightness::parse) {
             Some(b) => {
                 app.ui.brightness = b;
                 app.session.prefs.ui_brightness = b.id().into();
                 app.canvas.key = None;
                 Ok(json!(b.id()))
             }
-            None => Err("brightness must be dark|mediumDark|mediumLight|light".into()),
+            None => Err("brightness must be dark|mediumDark|mediumLight|light|shadesOfPurple".into()),
         },
+        id if id.starts_with("window.theme.") => {
+            let name = &id["window.theme.".len()..];
+            match Brightness::parse(name) {
+                Some(b) => {
+                    app.ui.brightness = b;
+                    app.session.prefs.ui_brightness = b.id().into();
+                    app.canvas.key = None;
+                    Ok(json!(b.id()))
+                }
+                None => Err(format!("unknown theme `{name}`")),
+            }
+        }
         "window.newWindow" => Err("multiple windows land with M11.5".into()),
         "tool.select" => match s("tool") {
             Some(t) if vectorcraft_tools::tool_info(&t).is_some() => {
@@ -1843,6 +1856,8 @@ pub fn checked(app: &VectorcraftApp, id: &str, p: &Value) -> Option<bool> {
         "window.collapseDock" => app.ui.dock_collapsed,
         "window.workspace" => p.get("name").and_then(Value::as_str) == Some(app.ui.workspace.as_str()),
         "window.brightness" => p.get("brightness").and_then(Value::as_str).and_then(Brightness::parse) == Some(app.ui.brightness),
+        "window.theme" => p.get("theme").or_else(|| p.get("brightness")).and_then(Value::as_str).and_then(Brightness::parse) == Some(app.ui.brightness),
+        "window.theme.shadesOfPurple" => app.ui.brightness == Brightness::ShadesOfPurple,
         "view.slices.lock" => app.session.slices_locked(),
         "object.slice.clipToArtboard" => app.session.active().is_some_and(|d| d.doc.slices_clip_to_artboard),
         "view.proofColors" => vectorcraft_render::proof::view().proof_colors,
@@ -3381,7 +3396,8 @@ pub(crate) fn home_showing(app: &VectorcraftApp) -> bool {
 pub fn click_target(label: &str, id: &str, p: &Value) -> (String, Value) {
     let dialog = label.ends_with('…')
         && p.as_object().is_some_and(|o| !o.is_empty())
-        && !matches!(id, "effect.dialog" | "window.panel" | "window.brightness" | "view.screenMode" | "plugin.dialog");
+        && !matches!(id, "effect.dialog" | "window.panel" | "window.brightness" | "window.theme" | "view.screenMode" | "plugin.dialog")
+        && !id.starts_with("window.theme.");
     if dialog {
         return ("ui.paramDialog".into(), json!({"command": id, "label": label.trim_end_matches('…'), "params": p}));
     }
@@ -4716,5 +4732,33 @@ mod tests {
         let tall = rect(3000.0);
         assert!(tall.height() > short.height() + 100.0, "{} vs {}", tall.height(), short.height());
         assert!(tall.bottom() < 3000.0);
+    }
+
+    #[test]
+    fn window_brightness_and_theme_commands_switch_appearance() {
+        let mut app = VectorcraftApp::new(vectorcraft_engine::Session::new(), crate::Services::default());
+        assert_eq!(app.ui.brightness, Brightness::MediumDark);
+
+        app.run("window.brightness", json!({"brightness": "shadesOfPurple"})).unwrap();
+        assert_eq!(app.ui.brightness, Brightness::ShadesOfPurple);
+        assert_eq!(app.session.prefs.ui_brightness, "shadesOfPurple");
+
+        app.run("window.brightness", json!({"brightness": "dark"})).unwrap();
+        assert_eq!(app.ui.brightness, Brightness::Dark);
+
+        app.run("window.theme", json!({"theme": "shades-of-purple"})).unwrap();
+        assert_eq!(app.ui.brightness, Brightness::ShadesOfPurple);
+
+        app.run("window.theme.shadesOfPurple", json!({})).unwrap();
+        assert_eq!(app.ui.brightness, Brightness::ShadesOfPurple);
+
+        // ui.set with theme and brightness
+        let ctx = egui::Context::default();
+        let (req, _) = crate::control::ControlRequest::new("ui.set", json!({"theme": "dark"}));
+        crate::control::handle(&mut app, &ctx, &req);
+        assert_eq!(app.ui.brightness, Brightness::Dark);
+        let (req, _) = crate::control::ControlRequest::new("ui.set", json!({"theme": "shadesOfPurple"}));
+        crate::control::handle(&mut app, &ctx, &req);
+        assert_eq!(app.ui.brightness, Brightness::ShadesOfPurple);
     }
 }

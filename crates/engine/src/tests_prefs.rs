@@ -66,6 +66,17 @@ fn set_normalizes_strings_labels_and_colours() {
 }
 
 #[test]
+fn set_shades_of_purple_brightness() {
+    let mut s = Session::new();
+    let r = s.execute("prefs.set", &json!({"key": "uiBrightness", "value": "shadesOfPurple"})).unwrap();
+    assert_eq!(r["uiBrightness"], json!("shadesOfPurple"));
+    assert_eq!(s.prefs.ui_brightness, "shadesOfPurple");
+
+    let r2 = s.execute("prefs.set", &json!({"key": "uiBrightness", "value": "Shades of Purple"})).unwrap();
+    assert_eq!(r2["uiBrightness"], json!("shadesOfPurple"));
+}
+
+#[test]
 fn batch_set_is_atomic() {
     let mut s = Session::new();
     assert!(s.execute("prefs.set", &json!({"values": {"keyboardIncrement": 3, "anchorSize": 99}})).is_err());

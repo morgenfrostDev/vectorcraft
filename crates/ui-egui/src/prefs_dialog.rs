@@ -8,6 +8,8 @@ use serde_json::{Map, Value, json};
 use vectorcraft_engine::Prefs;
 use vectorcraft_engine::cmd::prefscmds::{GPU_PREFERENCES, PREF_CATEGORIES, PREF_GROUPS, PREF_SPECS, PrefKind};
 
+use egui::{CornerRadius, Stroke};
+
 use crate::state::Dialog;
 use crate::theme::{self, Accent, Brightness, Scheme, Tokens};
 use crate::{VectorcraftApp, widgets};
@@ -476,6 +478,22 @@ mod tests {
         assert_eq!(a.session.prefs.ui_brightness, "light");
         assert!(!a.ui.view.smart_guides);
         assert_eq!(a.ui.engine_prefs["keyboardIncrement"], json!(4.0));
+    }
+
+    #[test]
+    fn dialog_ok_applies_shades_of_purple() {
+        let mut a = app();
+        open(&mut a, Some("User Interface"));
+        let d = a.ui.dialog.as_mut().unwrap();
+        d.fields.insert("uiBrightness".into(), json!("shadesOfPurple"));
+        confirm(&mut a).unwrap();
+        assert!(a.ui.dialog.is_none());
+        assert_eq!(a.session.prefs.ui_brightness, "shadesOfPurple");
+        let ctx = egui::Context::default();
+        apply_runtime(&mut a, &ctx);
+        assert_eq!(a.ui.brightness, Brightness::ShadesOfPurple);
+        assert_eq!(Tokens::get(&ctx).panel, Tokens::for_brightness(Brightness::ShadesOfPurple).panel);
+        assert_eq!(Tokens::get(&ctx).accent, egui::Color32::from_rgb(255, 0, 255));
     }
 
     /// General › Show Tool Tips: off, a button held under the pointer shows no tool tip; back on,

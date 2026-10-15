@@ -12,16 +12,29 @@ pub enum Brightness {
     MediumDark,
     MediumLight,
     Light,
+    /// A custom appearance based on Shades-of-purple-standard-buttons: deep royal purple surfaces,
+    /// standard 6 px button radii, vibrant gold accents and high-contrast text.
+    ShadesOfPurple,
 }
 
+/// Convenience alias matching PhotoCraft's theme naming convention.
+pub type ThemeKind = Brightness;
+
 impl Brightness {
-    pub const ALL: [Brightness; 4] = [Brightness::Dark, Brightness::MediumDark, Brightness::MediumLight, Brightness::Light];
+    pub const ALL: [Brightness; 5] = [
+        Brightness::Dark,
+        Brightness::MediumDark,
+        Brightness::MediumLight,
+        Brightness::Light,
+        Brightness::ShadesOfPurple,
+    ];
     pub fn label(self) -> &'static str {
         match self {
             Brightness::Dark => "Dark",
             Brightness::MediumDark => "Medium Dark",
             Brightness::MediumLight => "Medium Light",
             Brightness::Light => "Light",
+            Brightness::ShadesOfPurple => "Shades of Purple",
         }
     }
     pub fn id(self) -> &'static str {
@@ -30,9 +43,14 @@ impl Brightness {
             Brightness::MediumDark => "mediumDark",
             Brightness::MediumLight => "mediumLight",
             Brightness::Light => "light",
+            Brightness::ShadesOfPurple => "shadesOfPurple",
         }
     }
     pub fn parse(s: &str) -> Option<Self> {
+        let norm = s.trim().to_ascii_lowercase().replace(['-', '_', ' '], "");
+        if matches!(norm.as_str(), "shadesofpurple" | "shadesofpurplestandardbuttons" | "purple") {
+            return Some(Brightness::ShadesOfPurple);
+        }
         Self::ALL.into_iter().find(|b| b.id().eq_ignore_ascii_case(s) || b.label().eq_ignore_ascii_case(s))
     }
 }
@@ -138,6 +156,9 @@ pub struct Tokens {
     pub radius: u8,
     /// Field values, button labels, link labels.
     pub text_strong: Color32,
+    /// Suggested / primary action button background and text (e.g. OK, Create).
+    pub primary_bg: Color32,
+    pub primary_text: Color32,
     /// Panel tab strips, doc-tab bar, dock header.
     pub tab_strip: Color32,
     /// Outline of secondary (outlined) buttons.
@@ -330,6 +351,8 @@ impl Tokens {
             measure_bg: Color32::from_rgba_unmultiplied(92, 92, 92, 235),
             button: hex(0x444444),
             text_strong: hex(0xf5f5f5),
+            primary_bg: hex(0x1473e6),
+            primary_text: Color32::WHITE,
             tab_strip: hex(0x282828),
             button_border: hex(0x6a6a6a),
             flyout_active: hex(0x54b2f7),
@@ -414,6 +437,54 @@ impl Tokens {
                 button_border: hex(0x9a9a9a),
                 flyout_active: hex(0x1473e6),
                 ..base
+            },
+            // An adaptation of the Shades-of-purple GTK theme:
+            // rich purple surfaces (#25143D, #341d57, #3b2163), standard 6 px button corners,
+            // iconic gold/yellow accent (#FF00FF) with dark button label, and high-contrast text.
+            Brightness::ShadesOfPurple => Tokens {
+                dark: true,
+                app_bar: hex(0x1c102f),
+                panel: hex(0x341d57),
+                panel_darker: hex(0x25143d),
+                input: hex(0x3b2163),
+                input_border: hex(0x462873),
+                border: hex(0x150b22),
+                divider: hex(0x25143d),
+                text: hex(0xffffff),
+                text_strong: hex(0xffffff),
+                text_dim: hex(0xd7d2de),
+                text_disabled: hex(0x928a9e),
+                icon: hex(0xf0ebf5),
+                hover: hex(0x432670),
+                tool_active: hex(0x4d2c80),
+                accent: hex(0xff00ff),
+                accent_strong: hex(0xff00ff),
+                row_selected: Color32::from_rgba_unmultiplied(255, 0, 255, 48),
+                pasteboard: hex(0x150b22),
+                ruler: hex(0x25143d),
+                ruler_tick: hex(0x928a9e),
+                smart_guide: hex(0xff3dfc),
+                guide: hex(0x4affff),
+                measure_bg: Color32::from_rgba_unmultiplied(40, 20, 65, 235),
+                button: hex(0x3b2163),
+                radius: 6,
+                tab_strip: hex(0x25143d),
+                button_border: hex(0x5f369e),
+                selection: hex(0xff00ff),
+                anchor_selected: hex(0xff00ff),
+                flyout_active: hex(0xffe048),
+                font_size: 13.0,
+                caption_close: hex(0xe00025),
+                caption_close_text: Color32::WHITE,
+                highlight: hex(0xff00ff),
+                bleed: hex(0xf03030),
+                error: hex(0xff627e),
+                warning: hex(0xff00ff),
+                axis_x: hex(0xef6058),
+                axis_y: hex(0x45af63),
+                axis_z: hex(0x9d65ff),
+                primary_bg: hex(0xff00ff),
+                primary_text: hex(0x1e1e3f),
             },
         }
     }
@@ -636,5 +707,38 @@ mod tests {
             assert_eq!(classic.accent, Color32::from_rgb(0x37, 0x8e, 0xf0));
             assert_eq!(Scheme::parse(Scheme::Classic.id()), Some(Scheme::Classic));
         }
+    }
+
+    fn contrast(a: Color32, b: Color32) -> f32 {
+        let lin = |v: u8| {
+            let c = f32::from(v) / 255.0;
+            if c <= 0.04045 { c / 12.92 } else { ((c + 0.055) / 1.055).powf(2.4) }
+        };
+        let lum = |c: Color32| 0.2126 * lin(c.r()) + 0.7152 * lin(c.g()) + 0.0722 * lin(c.b());
+        let (hi, lo) = if lum(a) > lum(b) { (lum(a), lum(b)) } else { (lum(b), lum(a)) };
+        (hi + 0.05) / (lo + 0.05)
+    }
+
+    #[test]
+    fn shades_of_purple_theme_parses_and_meets_contrast() {
+        let b = Brightness::ShadesOfPurple;
+        assert_eq!(Brightness::parse("shadesOfPurple"), Some(b));
+        assert_eq!(Brightness::parse("Shades of Purple"), Some(b));
+        assert_eq!(Brightness::parse("shades-of-purple"), Some(b));
+        assert_eq!(Brightness::parse("shades_of_purple_standard_buttons"), Some(b));
+        assert_eq!(Brightness::parse("purple"), Some(b));
+        assert!(Brightness::ALL.contains(&b));
+        let t = Tokens::for_brightness(b);
+        assert!(t.dark);
+        assert_eq!(t.radius, 6); // 6 px standard button corners
+
+        let resting = [t.app_bar, t.pasteboard, t.panel_darker, t.panel, t.input, t.button];
+        let active = [t.hover, t.tool_active];
+        for surface in resting.into_iter().chain(active) {
+            assert!(contrast(t.text, surface) >= 7.0, "text on {surface:?}");
+            assert!(contrast(t.text_dim, surface) >= 4.5, "dim text on {surface:?}");
+        }
+        assert!(contrast(t.primary_text, t.primary_bg) >= 4.5, "primary button contrast");
+        assert!(contrast(t.caption_close_text, t.caption_close) >= 4.5, "close glyph");
     }
 }

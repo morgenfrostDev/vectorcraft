@@ -344,7 +344,7 @@ pub fn handle(app: &mut VectorcraftApp, ctx: &egui::Context, req: &ControlReques
         }
         "ui.set" => {
             let mut r = Ok(Value::Null);
-            if let Some(b) = s("brightness") {
+            if let Some(b) = s("brightness").or_else(|| s("theme")) {
                 r = app.run("window.brightness", json!({"brightness": b}));
             }
             if let Some(pn) = s("panel") {
