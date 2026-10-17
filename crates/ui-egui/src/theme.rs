@@ -12,7 +12,7 @@ pub enum Brightness {
     MediumDark,
     MediumLight,
     Light,
-    /// A custom appearance based on Shades-of-purple-standard-buttons: deep royal purple surfaces,
+    /// A custom appearance based on Shades-of-purple: deep royal purple surfaces,
     /// standard 6 px button radii, vibrant gold accents and high-contrast text.
     ShadesOfPurple,
 }
@@ -235,6 +235,8 @@ impl Tokens {
             axis_x: hex(0xef6058),
             axis_y: hex(0x45af63),
             axis_z: hex(0x378ef0),
+            primary_bg: hex(0xe8573f),
+            primary_text: hex(0x1e1e3f),
         };
         match b {
             Brightness::Dark => base,
@@ -321,6 +323,53 @@ impl Tokens {
                 button_border: hex(0xa4abb8),
                 ..base
             },
+            Brightness::ShadesOfPurple => {
+                Self {
+                    app_bar: hex(0x1c102f),
+                    panel: hex(0x341d57),
+                    panel_darker: hex(0x25143d),
+                    input: hex(0x3b2163),
+                    input_border: hex(0x462873),
+                    border: hex(0x150b22),
+                    divider: hex(0x25143d),
+                    text: hex(0xffffff),
+                    text_strong: hex(0xffffff),
+                    text_dim: hex(0xd7d2de),
+                    text_disabled: hex(0x928a9e),
+                    icon: hex(0xf0ebf5),
+                    hover: hex(0x432670),
+                    tool_active: hex(0x4d2c80),
+                    accent: hex(0xff00ff),
+                    accent_strong: hex(0xff00ff),
+                    row_selected: Color32::from_rgba_unmultiplied(255, 0, 255, 48),
+                    pasteboard: hex(0x150b22),
+                    ruler: hex(0x25143d),
+                    ruler_tick: hex(0x928a9e),
+                    smart_guide: hex(0xff3dfc),
+                    guide: hex(0x4affff),
+                    measure_bg: Color32::from_rgba_unmultiplied(40, 20, 65, 235),
+                    button: hex(0x3b2163),
+                    radius: 6,
+                    tab_strip: hex(0x25143d),
+                    button_border: hex(0x5f369e),
+                    selection: hex(0xff00ff),
+                    anchor_selected: hex(0xff00ff),
+                    flyout_active: hex(0xffe048),
+                    font_size: 13.0,
+                    caption_close: hex(0xe00025),
+                    caption_close_text: Color32::WHITE,
+                    highlight: hex(0xff00ff),
+                    bleed: hex(0xf03030),
+                    error: hex(0xff627e),
+                    warning: hex(0xff00ff),
+                    axis_x: hex(0xef6058),
+                    axis_y: hex(0x45af63),
+                    axis_z: hex(0x9d65ff),
+                    primary_bg: hex(0xff00ff),
+                    primary_text: hex(0x1e1e3f),
+                    ..base
+                }
+            }
         }
     }
 
@@ -485,7 +534,8 @@ impl Tokens {
                 axis_z: hex(0x9d65ff),
                 primary_bg: hex(0xff00ff),
                 primary_text: hex(0x1e1e3f),
-            },
+                ..base
+            }
         }
     }
 
